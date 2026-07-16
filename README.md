@@ -80,7 +80,7 @@ Health check: `GET /health`.
 - [x] Schema: customers, quotes, line_items
 - [x] CRUD endpoints for all three resources
 - [x] `/health` endpoint
-- [ ] ⚠️ First-run verification: `pip install`, run `schema.sql` against a
+- [x] ⚠️ First-run verification: `pip install`, run `schema.sql` against a
       real Postgres, boot uvicorn, smoke-test each endpoint via /docs.
       **Code is syntax-checked but has never been executed — do this before
       building anything else.**
