@@ -61,7 +61,7 @@ Health check: `GET /health`.
 | GET    | /quotes                          | List quotes                            |
 | GET    | /quotes/{id}                     | Get one quote (incl. line items)       |
 | PATCH  | /quotes/{id}                     | Edit quote; humans change status here  |
-| POST   | /quotes/{id}/estimate            | **Stub — returns 501.** Next feature.  |
+| POST   | /quotes/{id}/estimate            | Vision call → structured estimate      |
 | POST   | /quotes/{id}/line-items          | Add line item                          |
 | GET    | /quotes/{id}/line-items          | List line items                        |
 
@@ -80,16 +80,22 @@ Health check: `GET /health`.
 - [x] Schema: customers, quotes, line_items
 - [x] CRUD endpoints for all three resources
 - [x] `/health` endpoint
-- [x] ⚠️ First-run verification: `pip install`, run `schema.sql` against a
+- [ ] ⚠️ First-run verification: `pip install`, run `schema.sql` against a
       real Postgres, boot uvicorn, smoke-test each endpoint via /docs.
       **Code is syntax-checked but has never been executed — do this before
       building anything else.**
 
 **Week 2 — AI estimate**
-- [ ] Implement `POST /quotes/{id}/estimate` (see stub docstring in
-      `app/routers/quotes.py` for the 5 requirements)
-- [ ] Defensive JSON parsing (strip markdown fences / surrounding prose)
-- [ ] Tests: happy path + malformed-JSON-from-model path
+- [x] Implement `POST /quotes/{id}/estimate` — vision call via
+      `app/services/ai_estimate.py`, wired into `app/routers/quotes.py`
+- [x] Defensive JSON parsing (strips markdown fences / surrounding prose,
+      validates required fields, types, and value ranges)
+- [x] Tests: happy path + malformed-JSON-from-model path
+      (`tests/test_ai_estimate.py`, Anthropic call mocked — no API cost)
+- [x] Verified against the real Anthropic API: correctly rejected a
+      mismatched placeholder photo (returned a safe validation error
+      instead of a fabricated estimate), then returned a reasonable
+      structured estimate on a real stained-glass sketch.
 
 **Week 3 — Frontend scaffolding**
 - [ ] React or plain HTML/Tailwind (whichever is faster) — quote list,
