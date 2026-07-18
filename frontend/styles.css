@@ -1,0 +1,52 @@
+/* Shared visual language for the quote ledger. Warm-paper working tool,
+   not a marketing page — restrained jewel tones reserved for status only. */
+
+:root {
+  --putty: #f7f4ee;
+  --ink: #2b2b2e;
+  --steel: #2c5f8a;
+  --leaf: #3f6b4f;
+  --garnet: #8b3a3a;
+  --brass: #8c7a52;
+}
+
+body {
+  background-color: var(--putty);
+  color: var(--ink);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+h1, h2, h3, .font-display {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+}
+
+.font-mono,
+input[type="number"] {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Came line — a double hairline rule with diamond solder joints, echoing
+   leaded glass came. Used once, under the page header. */
+.came-line {
+  height: 13px;
+  width: 100%;
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='13'%3E%3Cline x1='0' y1='4' x2='48' y2='4' stroke='%232B2B2E' stroke-opacity='0.55' stroke-width='1'/%3E%3Cline x1='0' y1='9' x2='48' y2='9' stroke='%232B2B2E' stroke-opacity='0.55' stroke-width='1'/%3E%3Crect x='21.5' y='4' width='5' height='5' fill='%232B2B2E' fill-opacity='0.8' transform='rotate(45 24 6.5)'/%3E%3C/svg%3E");
+}
+
+/* Status badges — the one place jewel tones appear. */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--putty);
+}
+.badge-draft { background-color: var(--steel); }
+.badge-sent { background-color: var(--brass); }
+.badge-accepted { background-color: var(--leaf); }
+.badge-declined { background-color: var(--garnet); }

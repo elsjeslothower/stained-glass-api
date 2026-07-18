@@ -50,6 +50,19 @@ uvicorn app.main:app --reload
 Interactive docs at http://127.0.0.1:8000/docs once running.
 Health check: `GET /health`.
 
+## Frontend
+
+Static, no build step — open directly or serve with any static file server:
+
+```powershell
+cd frontend
+python -m http.server 5500
+# then open http://127.0.0.1:5500/index.html
+```
+
+It talks to the API at `http://127.0.0.1:8000` by default; change the "API
+base" field in the header (persisted in `localStorage`) to point elsewhere.
+
 ## Endpoints
 
 | Method | Path                             | Notes                                  |
@@ -98,8 +111,19 @@ Health check: `GET /health`.
       structured estimate on a real stained-glass sketch.
 
 **Week 3 — Frontend scaffolding**
-- [ ] React or plain HTML/Tailwind (whichever is faster) — quote list,
-      quote detail with editable estimate fields, "send" action
+- [x] Plain HTML/Tailwind (CDN, no build step) — faster than React for a
+      backend-focused portfolio project. Lives in `frontend/`:
+      `index.html` (quote list + new quote form), `customers.html`
+      (customer list + create form), `quote.html` (quote detail: editable
+      estimate fields, "Run AI estimate", line items, "Send quote" action).
+- [x] CORS enabled on the API (`app/main.py`) so the static frontend can
+      call it from a different origin — wide open for now since there's no
+      auth yet; tighten before any public deployment.
+- [x] Smoke-tested the full flow (create customer → create quote → run
+      estimate → add line item → send) against a throwaway mock API server,
+      since this environment has no Postgres to run the real backend.
+      **Not yet verified against the real FastAPI + Postgres backend** — do
+      that alongside the still-outstanding Week 1 first-run verification.
 
 **Later / explicitly deferred**
 - [ ] Auth (none yet — do not deploy publicly before this)
