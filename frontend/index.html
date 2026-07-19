@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quotes — Stained Glass Quote Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            putty: "#F7F4EE",
+            ink: "#2B2B2E",
+            steel: "#2C5F8A",
+            leaf: "#3F6B4F",
+            garnet: "#8B3A3A",
+            brass: "#8C7A52",
+          },
+          fontFamily: {
+            serif: ['"Fraunces"', "ui-serif", "Georgia", "serif"],
+            sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+            mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-putty text-ink min-h-screen">
+  <header class="bg-putty">
+    <div class="max-w-5xl mx-auto px-4 py-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-6">
+        <h1 class="text-xl font-display font-semibold tracking-tight">Stained Glass Quote Tool</h1>
+        <nav class="flex gap-5 text-sm">
+          <a href="index.html" class="font-medium text-ink border-b border-ink pb-0.5">Quotes</a>
+          <a href="customers.html" class="text-ink/60 hover:text-ink">Customers</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <label for="api-base-input" class="text-ink/50">API base</label>
+        <input id="api-base-input" type="text" class="border border-ink/20 rounded-sm px-2 py-1 w-56 text-xs bg-white/60 focus:outline-none focus:ring-1 focus:ring-ink/40" />
+      </div>
+    </div>
+  </header>
+  <div class="came-line" aria-hidden="true"></div>
+
+  <main class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+    <section class="bg-white/60 border border-ink/12 rounded-sm p-5">
+      <h2 class="font-display text-lg font-semibold mb-3">New quote</h2>
+      <form id="new-quote-form" class="grid gap-3 sm:grid-cols-2">
+        <div class="sm:col-span-1">
+          <label class="block text-sm text-ink/60 mb-1">Customer</label>
+          <select id="quote-customer" required class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40"></select>
+        </div>
+        <div class="sm:col-span-1">
+          <label class="block text-sm text-ink/60 mb-1">Image URL (optional)</label>
+          <input id="quote-image-url" type="url" placeholder="https://..." class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm text-ink/60 mb-1">Description</label>
+          <textarea id="quote-description" required rows="2" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40"
+            placeholder="e.g. 24x36 hummingbird panel, customer's own design"></textarea>
+        </div>
+        <div class="sm:col-span-2 flex items-center gap-3">
+          <button type="submit" class="bg-ink text-putty px-4 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/90">
+            Create quote
+          </button>
+          <span id="new-quote-error" class="text-sm text-garnet"></span>
+          <a href="customers.html" class="text-sm text-ink/50 hover:text-ink hover:underline ml-auto">No customers yet? Add one →</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white/60 border border-ink/12 rounded-sm">
+      <div class="flex items-center justify-between p-5 pb-0">
+        <h2 class="font-display text-lg font-semibold">Quotes</h2>
+        <button id="refresh-quotes" class="text-sm text-ink/60 hover:text-ink hover:underline">Refresh</button>
+      </div>
+      <div id="quotes-status" class="px-5 py-3 text-sm text-ink/50"></div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-ink/50 text-xs uppercase tracking-wide border-b border-ink/15">
+            <th class="px-5 py-2 font-medium">ID</th>
+            <th class="px-5 py-2 font-medium">Customer</th>
+            <th class="px-5 py-2 font-medium">Description</th>
+            <th class="px-5 py-2 font-medium">Status</th>
+            <th class="px-5 py-2 font-medium">Price range</th>
+            <th class="px-5 py-2 font-medium">Created</th>
+          </tr>
+        </thead>
+        <tbody id="quotes-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    let customersCache = [];
+
+    async function loadCustomersIntoSelect() {
+      const select = document.getElementById("quote-customer");
+      try {
+        customersCache = await apiFetch("/customers");
+        if (customersCache.length === 0) {
+          select.innerHTML = `<option value="">No customers yet — add one first</option>`;
+          return;
+        }
+        select.innerHTML = customersCache
+          .map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (#${c.id})</option>`)
+          .join("");
+      } catch (err) {
+        select.innerHTML = `<option value="">Failed to load customers</option>`;
+      }
+    }
+
+    function customerName(id) {
+      const c = customersCache.find((c) => c.id === id);
+      return c ? c.name : `#${id}`;
+    }
+
+    async function loadQuotes() {
+      const status = document.getElementById("quotes-status");
+      const body = document.getElementById("quotes-body");
+      status.textContent = "Loading…";
+      body.innerHTML = "";
+      try {
+        const quotes = await apiFetch("/quotes");
+        status.textContent = quotes.length === 0 ? "No quotes yet." : "";
+        body.innerHTML = quotes
+          .map(
+            (q) => `
+          <tr class="border-b border-ink/10 last:border-0 hover:bg-ink/[0.03] cursor-pointer" onclick="location.href='quote.html?id=${q.id}'">
+            <td class="px-5 py-2 font-mono text-ink/70">${q.id}</td>
+            <td class="px-5 py-2">${escapeHtml(customerName(q.customer_id))}</td>
+            <td class="px-5 py-2 max-w-xs truncate">${escapeHtml(q.description)}</td>
+            <td class="px-5 py-2"><span class="${statusBadgeClasses(q.status)}">${q.status}</span></td>
+            <td class="px-5 py-2 font-mono">${q.price_low !== null && q.price_high !== null ? `${money(q.price_low)} – ${money(q.price_high)}` : "—"}</td>
+            <td class="px-5 py-2 text-ink/50">${new Date(q.created_at).toLocaleDateString()}</td>
+          </tr>`
+          )
+          .join("");
+      } catch (err) {
+        status.textContent = `Error loading quotes: ${err.message}`;
+      }
+    }
+
+    document.getElementById("new-quote-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById("new-quote-error");
+      errorEl.textContent = "";
+      const customerId = document.getElementById("quote-customer").value;
+      if (!customerId) {
+        errorEl.textContent = "Pick a customer first.";
+        return;
+      }
+      const payload = {
+        customer_id: Number(customerId),
+        description: document.getElementById("quote-description").value,
+        image_url: document.getElementById("quote-image-url").value || null,
+      };
+      try {
+        const quote = await apiFetch("/quotes", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        location.href = `quote.html?id=${quote.id}`;
+      } catch (err) {
+        errorEl.textContent = err.message;
+      }
+    });
+
+    document.getElementById("refresh-quotes").addEventListener("click", loadQuotes);
+
+    (async () => {
+      await loadCustomersIntoSelect();
+      await loadQuotes();
+    })();
+  </script>
+</body>
+</html>

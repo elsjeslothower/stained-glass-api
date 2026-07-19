@@ -5,6 +5,7 @@ Run locally:
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import customers, line_items, quotes
 
@@ -16,6 +17,15 @@ app = FastAPI(
         "estimate; a human always reviews before anything is sent."
     ),
     version="0.1.0",
+)
+
+# No auth yet (see README), so this is wide open for local frontend dev.
+# Tighten to specific origins before any public deployment.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(customers.router)

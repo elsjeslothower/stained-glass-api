@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quote detail — Stained Glass Quote Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            putty: "#F7F4EE",
+            ink: "#2B2B2E",
+            steel: "#2C5F8A",
+            leaf: "#3F6B4F",
+            garnet: "#8B3A3A",
+            brass: "#8C7A52",
+          },
+          fontFamily: {
+            serif: ['"Fraunces"', "ui-serif", "Georgia", "serif"],
+            sans: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+            mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-putty text-ink min-h-screen">
+  <header class="bg-putty">
+    <div class="max-w-5xl mx-auto px-4 py-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-6">
+        <h1 class="text-xl font-display font-semibold tracking-tight">Stained Glass Quote Tool</h1>
+        <nav class="flex gap-5 text-sm">
+          <a href="index.html" class="font-medium text-ink border-b border-ink pb-0.5">Quotes</a>
+          <a href="customers.html" class="text-ink/60 hover:text-ink">Customers</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <label for="api-base-input" class="text-ink/50">API base</label>
+        <input id="api-base-input" type="text" class="border border-ink/20 rounded-sm px-2 py-1 w-56 text-xs bg-white/60 focus:outline-none focus:ring-1 focus:ring-ink/40" />
+      </div>
+    </div>
+  </header>
+  <div class="came-line" aria-hidden="true"></div>
+
+  <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <a href="index.html" class="text-sm text-ink/60 hover:text-ink hover:underline">← Back to quotes</a>
+
+    <div id="load-error" class="text-sm text-garnet"></div>
+
+    <section id="quote-section" class="hidden space-y-6">
+      <div class="bg-white/60 border border-ink/12 rounded-sm p-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-display font-semibold">Quote #<span id="quote-id" class="font-mono"></span></h2>
+          <p class="text-sm text-ink/60">
+            Customer: <span id="customer-name" class="text-ink"></span>
+            (<span id="customer-email" class="text-ink/50"></span>)
+          </p>
+          <p class="text-xs text-ink/40 mt-1">Created <span id="quote-created"></span> · Updated <span id="quote-updated"></span></p>
+        </div>
+        <span id="status-badge" class="h-fit"></span>
+      </div>
+
+      <!-- Description / image -->
+      <section class="bg-white/60 border border-ink/12 rounded-sm p-5 space-y-3">
+        <h3 class="font-display font-semibold">Project</h3>
+        <div>
+          <label class="block text-sm text-ink/60 mb-1">Description</label>
+          <textarea id="field-description" rows="2" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm text-ink/60 mb-1">Image URL</label>
+          <input id="field-image-url" type="url" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+        </div>
+        <img id="quote-image-preview" class="max-h-64 rounded-sm border border-ink/12 hidden" />
+        <div class="flex items-center gap-3">
+          <button id="save-project" class="bg-ink text-putty px-4 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/90">
+            Save project details
+          </button>
+          <span id="save-project-msg" class="text-sm"></span>
+        </div>
+      </section>
+
+      <!-- AI estimate -->
+      <section class="bg-white/60 border border-ink/12 rounded-sm p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-display font-semibold">AI estimate (editable)</h3>
+          <button id="run-estimate" class="border border-ink/30 text-ink px-3 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/5">
+            Run AI estimate
+          </button>
+        </div>
+        <p id="estimate-msg" class="text-sm"></p>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Piece count</label>
+            <input id="field-piece-count" type="number" min="0" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Square inches</label>
+            <input id="field-sq-inches" type="number" min="0" step="0.01" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Complexity (1–5)</label>
+            <input id="field-complexity" type="number" min="1" max="5" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Colors detected (comma-separated)</label>
+            <input id="field-colors" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Price low</label>
+            <input id="field-price-low" type="number" min="0" step="0.01" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-sm text-ink/60 mb-1">Price high</label>
+            <input id="field-price-high" type="number" min="0" step="0.01" class="w-full border border-ink/20 rounded-sm px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="save-estimate" class="bg-ink text-putty px-4 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/90">
+            Save estimate
+          </button>
+          <span id="save-estimate-msg" class="text-sm"></span>
+        </div>
+
+        <details id="raw-response-wrap" class="hidden text-xs text-ink/50">
+          <summary class="cursor-pointer select-none">Raw AI response (audit)</summary>
+          <pre id="raw-response" class="whitespace-pre-wrap font-mono bg-putty border border-ink/12 rounded-sm p-2 mt-2"></pre>
+        </details>
+      </section>
+
+      <!-- Line items -->
+      <section class="bg-white/60 border border-ink/12 rounded-sm p-5 space-y-3">
+        <h3 class="font-display font-semibold">Line items</h3>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-ink/50 text-xs uppercase tracking-wide border-b border-ink/15">
+              <th class="py-1.5 font-medium">Description</th>
+              <th class="py-1.5 font-medium">Qty</th>
+              <th class="py-1.5 font-medium">Unit price</th>
+              <th class="py-1.5 font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody id="line-items-body"></tbody>
+          <tfoot>
+            <tr class="border-t border-ink/15 font-medium">
+              <td colspan="3" class="py-1.5 text-right pr-3">Subtotal</td>
+              <td id="line-items-total" class="py-1.5 font-mono">$0.00</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <form id="new-line-item-form" class="grid gap-2 sm:grid-cols-4 items-end pt-2 border-t border-ink/12">
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-ink/50 mb-1">Description</label>
+            <input id="li-description" required class="w-full border border-ink/20 rounded-sm px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-xs text-ink/50 mb-1">Qty</label>
+            <input id="li-quantity" type="number" min="1" value="1" required class="w-full border border-ink/20 rounded-sm px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div>
+            <label class="block text-xs text-ink/50 mb-1">Unit price</label>
+            <input id="li-unit-price" type="number" min="0" step="0.01" required class="w-full border border-ink/20 rounded-sm px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ink/40" />
+          </div>
+          <div class="sm:col-span-4">
+            <button type="submit" class="bg-ink text-putty px-3 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/90">
+              Add line item
+            </button>
+            <span id="line-item-error" class="text-sm text-garnet ml-2"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Send action -->
+      <section class="bg-white/60 border border-ink/12 rounded-sm p-5 flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-semibold">Send to customer</h3>
+          <p class="text-sm text-ink/60">Marks the quote as <code class="font-mono">sent</code>. This is the only place status changes — never done automatically by the AI estimate.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="send-msg" class="text-sm"></span>
+          <button id="send-quote" class="bg-ink text-putty px-4 py-1.5 rounded-sm text-sm font-medium hover:bg-ink/90 disabled:bg-ink/15 disabled:text-ink/40 disabled:cursor-not-allowed disabled:hover:bg-ink/15">
+            Send quote
+          </button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    const quoteId = new URLSearchParams(location.search).get("id");
+    let currentQuote = null;
+
+    if (!quoteId) {
+      document.getElementById("load-error").textContent = "No quote id given in the URL.";
+    }
+
+    function fmtDate(iso) {
+      return iso ? new Date(iso).toLocaleString() : "—";
+    }
+
+    function populateFields(q) {
+      document.getElementById("quote-id").textContent = q.id;
+      document.getElementById("quote-created").textContent = fmtDate(q.created_at);
+      document.getElementById("quote-updated").textContent = fmtDate(q.updated_at);
+
+      const badge = document.getElementById("status-badge");
+      badge.textContent = q.status;
+      badge.className = `h-fit ${statusBadgeClasses(q.status)}`;
+
+      document.getElementById("field-description").value = q.description || "";
+      document.getElementById("field-image-url").value = q.image_url || "";
+      const preview = document.getElementById("quote-image-preview");
+      if (q.image_url) {
+        preview.src = q.image_url;
+        preview.classList.remove("hidden");
+      } else {
+        preview.classList.add("hidden");
+      }
+
+      document.getElementById("field-piece-count").value = q.piece_count_estimate ?? "";
+      document.getElementById("field-sq-inches").value = q.sq_inches_estimate ?? "";
+      document.getElementById("field-complexity").value = q.complexity_score ?? "";
+      document.getElementById("field-colors").value = (q.colors_detected || []).join(", ");
+      document.getElementById("field-price-low").value = q.price_low ?? "";
+      document.getElementById("field-price-high").value = q.price_high ?? "";
+
+      const rawWrap = document.getElementById("raw-response-wrap");
+      if (q.ai_raw_response) {
+        rawWrap.classList.remove("hidden");
+        document.getElementById("raw-response").textContent = q.ai_raw_response;
+      } else {
+        rawWrap.classList.add("hidden");
+      }
+
+      const sendBtn = document.getElementById("send-quote");
+      sendBtn.disabled = q.status !== "draft";
+      sendBtn.textContent = q.status === "draft" ? "Send quote" : `Already ${q.status}`;
+
+      renderLineItems(q.line_items || []);
+    }
+
+    function renderLineItems(items) {
+      const body = document.getElementById("line-items-body");
+      let total = 0;
+      body.innerHTML = items
+        .map((li) => {
+          const lineTotal = li.quantity * Number(li.unit_price);
+          total += lineTotal;
+          return `
+            <tr class="border-b border-ink/10 last:border-0">
+              <td class="py-1.5">${escapeHtml(li.description)}</td>
+              <td class="py-1.5 font-mono">${li.quantity}</td>
+              <td class="py-1.5 font-mono">${money(li.unit_price)}</td>
+              <td class="py-1.5 font-mono">${money(lineTotal)}</td>
+            </tr>`;
+        })
+        .join("");
+      document.getElementById("line-items-total").textContent = money(total);
+    }
+
+    async function loadQuote() {
+      try {
+        currentQuote = await apiFetch(`/quotes/${quoteId}`);
+        const customer = await apiFetch(`/customers/${currentQuote.customer_id}`);
+        document.getElementById("customer-name").textContent = customer.name;
+        document.getElementById("customer-email").textContent = customer.email || "no email";
+        populateFields(currentQuote);
+        document.getElementById("quote-section").classList.remove("hidden");
+      } catch (err) {
+        document.getElementById("load-error").textContent = `Error loading quote: ${err.message}`;
+      }
+    }
+
+    document.getElementById("save-project").addEventListener("click", async () => {
+      const msg = document.getElementById("save-project-msg");
+      msg.textContent = "Saving…";
+      msg.className = "text-sm text-ink/50";
+      try {
+        currentQuote = await apiFetch(`/quotes/${quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            description: document.getElementById("field-description").value,
+            image_url: document.getElementById("field-image-url").value || null,
+          }),
+        });
+        populateFields(currentQuote);
+        msg.textContent = "Saved.";
+        msg.className = "text-sm text-leaf";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-garnet";
+      }
+    });
+
+    document.getElementById("save-estimate").addEventListener("click", async () => {
+      const msg = document.getElementById("save-estimate-msg");
+      msg.textContent = "Saving…";
+      msg.className = "text-sm text-ink/50";
+
+      const numOrNull = (v) => (v === "" ? null : Number(v));
+      const colorsRaw = document.getElementById("field-colors").value;
+      const colors = colorsRaw.trim()
+        ? colorsRaw.split(",").map((c) => c.trim()).filter(Boolean)
+        : null;
+
+      try {
+        currentQuote = await apiFetch(`/quotes/${quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            piece_count_estimate: numOrNull(document.getElementById("field-piece-count").value),
+            sq_inches_estimate: numOrNull(document.getElementById("field-sq-inches").value),
+            complexity_score: numOrNull(document.getElementById("field-complexity").value),
+            colors_detected: colors,
+            price_low: numOrNull(document.getElementById("field-price-low").value),
+            price_high: numOrNull(document.getElementById("field-price-high").value),
+          }),
+        });
+        populateFields(currentQuote);
+        msg.textContent = "Saved.";
+        msg.className = "text-sm text-leaf";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-garnet";
+      }
+    });
+
+    document.getElementById("run-estimate").addEventListener("click", async () => {
+      const msg = document.getElementById("estimate-msg");
+      msg.textContent = "Calling the AI estimate endpoint… this can take a few seconds.";
+      msg.className = "text-sm text-ink/50";
+      try {
+        currentQuote = await apiFetch(`/quotes/${quoteId}/estimate`, { method: "POST" });
+        populateFields(currentQuote);
+        msg.textContent = "Estimate generated. Review the fields below before sending.";
+        msg.className = "text-sm text-leaf";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-garnet";
+        // The raw response may have been stored even on a parse failure — reload to show it.
+        await loadQuote();
+      }
+    });
+
+    document.getElementById("new-line-item-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById("line-item-error");
+      errorEl.textContent = "";
+      const payload = {
+        description: document.getElementById("li-description").value,
+        quantity: Number(document.getElementById("li-quantity").value),
+        unit_price: Number(document.getElementById("li-unit-price").value),
+      };
+      try {
+        await apiFetch(`/quotes/${quoteId}/line-items`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        e.target.reset();
+        document.getElementById("li-quantity").value = 1;
+        await loadQuote();
+      } catch (err) {
+        errorEl.textContent = err.message;
+      }
+    });
+
+    document.getElementById("send-quote").addEventListener("click", async () => {
+      const msg = document.getElementById("send-msg");
+      if (!confirm("Mark this quote as sent? This should only be done after review.")) return;
+      msg.textContent = "Sending…";
+      msg.className = "text-sm text-ink/50";
+      try {
+        currentQuote = await apiFetch(`/quotes/${quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "sent" }),
+        });
+        populateFields(currentQuote);
+        msg.textContent = "Marked as sent.";
+        msg.className = "text-sm text-leaf";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-garnet";
+      }
+    });
+
+    if (quoteId) loadQuote();
+  </script>
+</body>
+</html>
