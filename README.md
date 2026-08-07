@@ -38,7 +38,9 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 copy .env.example .env        # (macOS/Linux: cp .env.example .env)
-# then edit .env with your real DATABASE_URL and ANTHROPIC_API_KEY
+# then edit .env with your real DATABASE_URL and ANTHROPIC_API_KEY, and set
+# an admin login (see "Auth" below) — all four ADMIN_*/SESSION_* keys are
+# required, the app won't start without them.
 
 # 4. Create the schema (needs a running Postgres and psql on PATH)
 psql "<your DATABASE_URL>" -f schema.sql
@@ -48,7 +50,25 @@ uvicorn app.main:app --reload
 ```
 
 Interactive docs at http://127.0.0.1:8000/docs once running.
-Health check: `GET /health`.
+Health check: `GET /health` (the only unauthenticated route besides `/auth/*`).
+
+## Auth
+
+Single admin login, no users table — see `app/auth.py`. One-off setup:
+
+```bash
+# Password hash for ADMIN_PASSWORD_HASH — never store the plaintext password
+python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
+
+# Session-signing secret for SESSION_SECRET_KEY — rotating this logs everyone out
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Put both, plus `ADMIN_USERNAME`, `CORS_ORIGINS`, and `SESSION_COOKIE_SECURE`,
+in `.env` (see `.env.example` for the full set with comments). The frontend
+logs in via `POST /auth/login`, which sets an `HttpOnly` session cookie —
+every page but `login.html` redirects there if the session is missing or
+expired.
 
 ## Frontend
 
@@ -57,16 +77,22 @@ Static, no build step — open directly or serve with any static file server:
 ```powershell
 cd frontend
 python -m http.server 5500
-# then open http://127.0.0.1:5500/index.html
+# then open http://127.0.0.1:5500/index.html — you'll be bounced to
+# login.html first if there's no active session
 ```
 
 It talks to the API at `http://127.0.0.1:8000` by default; change the "API
 base" field in the header (persisted in `localStorage`) to point elsewhere.
+Whatever origin you serve `frontend/` from must be listed in the API's
+`CORS_ORIGINS` env var, or login will fail silently (cookie won't be set).
 
 ## Endpoints
 
 | Method | Path                             | Notes                                  |
 | ------ | -------------------------------- | -------------------------------------- |
+| POST   | /auth/login                      | Log in, sets session cookie            |
+| POST   | /auth/logout                     | Clear session                          |
+| GET    | /auth/me                         | Current session's username (401 if none) |
 | POST   | /customers                       | Create customer                        |
 | GET    | /customers                       | List customers                         |
 | GET    | /customers/{id}                  | Get one customer                       |
@@ -133,10 +159,39 @@ base" field in the header (persisted in `localStorage`) to point elsewhere.
       create/patch/line-item/send against the live API directly, then
       cleaned up the test rows afterward.
 
+**Week 4 — Auth**
+- [x] Single-admin session auth: `app/auth.py` (`bcrypt` password check,
+      `require_auth` dependency), `app/routers/auth.py` (`/auth/login`,
+      `/auth/logout`, `/auth/me`). No users table — one credential from
+      `.env`, proportionate to a solo-owner tool. Deliberately deferred:
+      multi-user support, password self-service, login rate-limiting,
+      explicit CSRF tokens (covered by the CORS allowlist + `SameSite=Lax`
+      for now), a revocable server-side session store.
+- [x] `customers`, `quotes`, `line_items` routers protected via
+      `dependencies=[Depends(require_auth)]` at `include_router()` — zero
+      changes to the route files themselves. `/health` and `/auth/*` stay
+      public.
+- [x] CORS tightened: `allow_origins` is now a configurable allowlist
+      (`CORS_ORIGINS`) instead of `"*"`, with `allow_credentials=True` so
+      the session cookie can flow cross-origin during local dev.
+- [x] Frontend: `login.html`, `requireAuth()`/`logout()` in `api.js`,
+      every other page guards its startup on `requireAuth()` and gets a
+      "Log out" link in the header.
+- [x] Verified against the real backend: curl'd the full cycle (401 before
+      login → login sets cookie → authenticated reads succeed → logout →
+      401 again), then confirmed the same in the browser — unauthenticated
+      visits redirect to `login.html`, a real login persists across all
+      three pages, and logging out re-locks the app.
+
 **Later / explicitly deferred**
-- [ ] Auth (none yet — do not deploy publicly before this)
-- [ ] Deployment (Railway/Fly.io + Supabase/Railway Postgres)
+- [ ] Deployment (Railway/Fly.io + Supabase/Railway Postgres) — note for
+      later: session cookie `SameSite`/`Secure` config will need revisiting
+      once frontend and API are genuinely cross-site rather than same-site
+      localhost ports (see comments in `app/main.py`)
 - [ ] Alembic migrations, if schema churn warrants it
+- [ ] Move quote images from pasted URLs to owned object storage (Supabase
+      Storage, once on Supabase) — `image_url` would store a storage
+      key/reference instead of a third-party link
 
 ## Process notes
 
