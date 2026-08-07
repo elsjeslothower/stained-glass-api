@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "elsje-codes-dev",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
+      "runtimeArgs": ["--prefix", "C:\\Users\\sloth_bb8hblt\\OneDrive\\Documents\\Dev\\elsje-codes", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
