@@ -9,6 +9,17 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 QuoteStatus = Literal["draft", "sent", "accepted", "declined"]
 
 
+# ---------- Auth ----------
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthUser(BaseModel):
+    username: str
+
+
 # ---------- Customers ----------
 
 class CustomerCreate(BaseModel):

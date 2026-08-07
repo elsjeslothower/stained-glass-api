@@ -14,6 +14,7 @@ function setApiBase(url) {
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${getApiBase()}${path}`, {
     ...options,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
   });
   if (!res.ok) {
@@ -30,6 +31,26 @@ async function apiFetch(path, options = {}) {
   return res.json();
 }
 
+// Redirects to the login page if there's no valid session. Call at the top
+// of every protected page's startup script.
+async function requireAuth() {
+  try {
+    await apiFetch("/auth/me");
+    return true;
+  } catch {
+    location.href = "login.html";
+    return false;
+  }
+}
+
+async function logout() {
+  try {
+    await apiFetch("/auth/logout", { method: "POST" });
+  } finally {
+    location.href = "login.html";
+  }
+}
+
 // Wires up the "API base" input that appears in the header of every page.
 function initApiBaseControl() {
   const input = document.getElementById("api-base-input");
@@ -39,6 +60,16 @@ function initApiBaseControl() {
     setApiBase(input.value || DEFAULT_API_BASE);
     input.value = getApiBase();
     location.reload();
+  });
+}
+
+// Wires up the "Log out" link that appears in the header of protected pages.
+function initLogoutControl() {
+  const link = document.getElementById("logout-link");
+  if (!link) return;
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    logout();
   });
 }
 
@@ -57,4 +88,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-document.addEventListener("DOMContentLoaded", initApiBaseControl);
+document.addEventListener("DOMContentLoaded", () => {
+  initApiBaseControl();
+  initLogoutControl();
+});

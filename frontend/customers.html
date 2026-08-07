@@ -40,9 +40,10 @@
           <a href="customers.html" class="font-medium text-ink border-b border-ink pb-0.5">Customers</a>
         </nav>
       </div>
-      <div class="flex items-center gap-2 text-sm">
+      <div class="flex items-center gap-3 text-sm">
         <label for="api-base-input" class="text-ink/50">API base</label>
         <input id="api-base-input" type="text" class="border border-ink/20 rounded-sm px-2 py-1 w-56 text-xs bg-white/60 focus:outline-none focus:ring-1 focus:ring-ink/40" />
+        <a id="logout-link" href="#" class="text-ink/60 hover:text-ink">Log out</a>
       </div>
     </div>
   </header>
@@ -146,7 +147,10 @@
 
     document.getElementById("refresh-customers").addEventListener("click", loadCustomers);
 
-    loadCustomers();
+    (async () => {
+      if (!(await requireAuth())) return;
+      await loadCustomers();
+    })();
   </script>
 </body>
 </html>
