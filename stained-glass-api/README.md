@@ -50,19 +50,6 @@ uvicorn app.main:app --reload
 Interactive docs at http://127.0.0.1:8000/docs once running.
 Health check: `GET /health`.
 
-## Frontend
-
-Static, no build step — open directly or serve with any static file server:
-
-```powershell
-cd frontend
-python -m http.server 5500
-# then open http://127.0.0.1:5500/index.html
-```
-
-It talks to the API at `http://127.0.0.1:8000` by default; change the "API
-base" field in the header (persisted in `localStorage`) to point elsewhere.
-
 ## Endpoints
 
 | Method | Path                             | Notes                                  |
@@ -93,15 +80,10 @@ base" field in the header (persisted in `localStorage`) to point elsewhere.
 - [x] Schema: customers, quotes, line_items
 - [x] CRUD endpoints for all three resources
 - [x] `/health` endpoint
-- [x] First-run verification: installed deps, ran `schema.sql` against a
-      real local Postgres, booted uvicorn, smoke-tested every endpoint
-      (`POST`/`GET`/`PATCH` on customers, quotes, line items — including a
-      404 and a validation-error case). One real bug found and fixed along
-      the way: the installed `anthropic` package was corrupted (missing
-      `anthropic.types.shared` on disk), which crashed the app at import
-      time before uvicorn could even bind the port — reinstalling the
-      package fixed it. Not a code issue, but worth knowing if this
-      environment gets rebuilt from `requirements.txt` again.
+- [ ] ⚠️ First-run verification: `pip install`, run `schema.sql` against a
+      real Postgres, boot uvicorn, smoke-test each endpoint via /docs.
+      **Code is syntax-checked but has never been executed — do this before
+      building anything else.**
 
 **Week 2 — AI estimate**
 - [x] Implement `POST /quotes/{id}/estimate` — vision call via
@@ -110,28 +92,35 @@ base" field in the header (persisted in `localStorage`) to point elsewhere.
       validates required fields, types, and value ranges)
 - [x] Tests: happy path + malformed-JSON-from-model path
       (`tests/test_ai_estimate.py`, Anthropic call mocked — no API cost)
-- [x] Verified against the real Anthropic API: correctly rejected a
-      mismatched placeholder photo (returned a safe validation error
-      instead of a fabricated estimate), then returned a reasonable
-      structured estimate on a real stained-glass sketch.
+- [ ] ⚠️ Not yet run against the real Anthropic API — parsing logic is
+      unit-tested with mocks, but the actual vision call has never fired.
+      First real call will also validate the model correctly reads glass
+      photos, which the mocked tests can't tell you.
 
 **Week 3 — Frontend scaffolding**
-- [x] Plain HTML/Tailwind (CDN, no build step) — faster than React for a
-      backend-focused portfolio project. Lives in `frontend/`:
-      `index.html` (quote list + new quote form), `customers.html`
-      (customer list + create form), `quote.html` (quote detail: editable
-      estimate fields, "Run AI estimate", line items, "Send quote" action).
-- [x] CORS enabled on the API (`app/main.py`) so the static frontend can
-      call it from a different origin — wide open for now since there's no
-      auth yet; tighten before any public deployment.
-- [x] Verified against the real FastAPI + Postgres backend (not just the
-      mock server used earlier): served `frontend/` statically, pointed it
-      at a locally running API, and confirmed the quote list, customer
-      list, and quote detail pages all render real data correctly —
-      including the actual customer, the real AI estimate fields, colors,
-      and the quote's real image loading in the preview. Also exercised
-      create/patch/line-item/send against the live API directly, then
-      cleaned up the test rows afterward.
+- Decided: plain HTML + Tailwind (via CDN, no build step) — served directly
+  by FastAPI's `StaticFiles`, same origin as the API (no CORS setup needed).
+  React was considered and deliberately skipped: this tool's users are
+  stained glass sellers doing simple CRUD/form work, not a complex
+  client-state app, and React would be scope-creep into the portfolio's
+  separate full-stack project.
+- Customer creation is **inline** on the new-quote form (pick existing or
+  create new, same screen) — one less click for the seller.
+- Planned as 4 resumable sessions:
+  - [ ] **Session A** — static file serving wired into FastAPI + read-only
+        quote list page (customer, status, price range, created date)
+  - [ ] **Session B** — new quote form: inline customer create/select +
+        description + image URL (still pasted from an external host —
+        real file upload is deliberately deferred, see below)
+  - [ ] **Session C** — quote detail page: "Run AI Estimate" button,
+        editable estimate fields, raw AI response (collapsible), status
+        change via existing PATCH endpoint
+  - [ ] **Session D** — line items UI + styling/error-state polish
+
+**Deliberately deferred (don't scope-creep into these without discussion)**
+- Real image file upload (multipart endpoint + storage) — current workflow
+  is paste an externally-hosted image URL
+- Auth — still none; do not deploy this publicly before adding it
 
 **Later / explicitly deferred**
 - [ ] Auth (none yet — do not deploy publicly before this)
