@@ -24,7 +24,8 @@ output into something a business can trust:
 
 - FastAPI + SQLAlchemy 2.0 + Postgres
 - Anthropic API (Claude, vision-capable) for estimates
-- Deploy target (planned): Railway or Fly.io (API), Supabase or Railway (Postgres)
+- Deploy target: Railway (API) + Supabase (Postgres), custom domain
+  `api.elsje.codes` — see "Deployment" below
 
 ## Setup (Windows-friendly)
 
@@ -85,6 +86,46 @@ It talks to the API at `http://127.0.0.1:8000` by default; change the "API
 base" field in the header (persisted in `localStorage`) to point elsewhere.
 Whatever origin you serve `frontend/` from must be listed in the API's
 `CORS_ORIGINS` env var, or login will fail silently (cookie won't be set).
+
+## Deployment
+
+API on Railway, Postgres on Supabase, custom domain `api.elsje.codes`. The
+frontend is a separate static drop-in served from the portfolio site at
+`elsje.codes/quote-tool/` (a copy of `frontend/`, not this repo's concern to
+deploy) — `api.elsje.codes` and `elsje.codes` share a registrable domain, so
+the session cookie stays same-site (`SameSite=Lax`, no code change needed
+for the cross-subdomain case).
+
+- **Start command:** `Procfile` (`web: uvicorn app.main:app --host 0.0.0.0
+  --port $PORT`) — Railway's Nixpacks auto-detects it.
+- **Database:** Supabase's **Session Pooler** connection (port 5432, host
+  `aws-<region>.pooler.supabase.com`), not the direct connection
+  (`db.<ref>.supabase.co:5432`) and not the Transaction Pooler (port 6543).
+  Supabase's direct-connection host is **IPv6-only** — confirmed the hard
+  way, `psql` couldn't resolve/route to it from this network — so the
+  Session Pooler is actually required here, not just a nice-to-have. It's
+  IPv4-compatible and, unlike the Transaction Pooler, supports session-level
+  features SQLAlchemy relies on. Append `?sslmode=require` to the
+  connection string.
+- **Env vars to set in Railway's dashboard** (never commit these):
+
+  | Env var | Value |
+  | --- | --- |
+  | `DATABASE_URL` | Supabase Session Pooler connection string + `?sslmode=require` |
+  | `ANTHROPIC_API_KEY` | real key |
+  | `ADMIN_USERNAME` | admin username |
+  | `ADMIN_PASSWORD_HASH` | bcrypt hash (see "Auth" above) |
+  | `SESSION_SECRET_KEY` | a **fresh** `secrets.token_hex(32)` — don't reuse the local `.env` value |
+  | `CORS_ORIGINS` | `https://elsje.codes` (origin only; `/quote-tool/` path doesn't matter for CORS matching) |
+  | `SESSION_COOKIE_SECURE` | `true` |
+
+  `PORT` is injected by Railway automatically.
+- **Custom domain:** add `api.elsje.codes` under Railway → Networking, then
+  add the CNAME Railway shows at whatever registrar hosts `elsje.codes`'s
+  DNS.
+- **Schema:** run `psql "<DATABASE_URL>?sslmode=require" -f schema.sql`
+  against the new Supabase database once, before the first deploy — same as
+  local setup, just pointed at Supabase instead of localhost.
 
 ## Endpoints
 
@@ -183,11 +224,22 @@ Whatever origin you serve `frontend/` from must be listed in the API's
       visits redirect to `login.html`, a real login persists across all
       three pages, and logging out re-locks the app.
 
+**Week 5 — Deployment (in progress)**
+- [x] Stack decided: Railway (API) + Supabase (Postgres), custom domain
+      `api.elsje.codes` so the session cookie stays same-site with
+      `elsje.codes` — no `SameSite`/`Secure` code change needed, see
+      "Deployment" above.
+- [x] `Procfile` added for Railway's Nixpacks to find the start command.
+- [x] Supabase project created, `schema.sql` run against it (via the Session
+      Pooler connection — the direct connection is IPv6-only and wasn't
+      reachable from this network, see "Deployment" above)
+- [x] Frontend dropped in at `elsje.codes/quote-tool/` (separate repo,
+      committed on a branch there, not yet pushed to `master`)
+- [ ] Railway project created, env vars set, custom domain + DNS CNAME live
+- [ ] End-to-end verified against the live stack (see Deployment section);
+      flip this whole entry to done only once that passes
+
 **Later / explicitly deferred**
-- [ ] Deployment (Railway/Fly.io + Supabase/Railway Postgres) — note for
-      later: session cookie `SameSite`/`Secure` config will need revisiting
-      once frontend and API are genuinely cross-site rather than same-site
-      localhost ports (see comments in `app/main.py`)
 - [ ] Alembic migrations, if schema churn warrants it
 - [ ] Move quote images from pasted URLs to owned object storage (Supabase
       Storage, once on Supabase) — `image_url` would store a storage
